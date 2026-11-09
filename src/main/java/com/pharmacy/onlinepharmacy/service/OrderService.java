@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -72,5 +73,57 @@ public class OrderService {
         cartItemRepository.deleteAllByUser(user);
 
         return order.getId();
+    }
+
+    // Метод смены статуса
+    @Transactional
+    public void cancelOrder(Long orderId, String userEmail) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Заказ не найден"));
+
+        // Проверяем, что заказ принадлежит этому пользователю
+        if (!order.getUser().getEmail().equals(userEmail)) {
+            throw new RuntimeException("У вас нет прав на отмену этого заказа");
+        }
+
+        // Отменить можно только в CREATED или CONFIRMED
+        if (order.getStatus() != com.pharmacy.onlinepharmacy.enums.OrderStatus.CREATED &&
+                order.getStatus() != com.pharmacy.onlinepharmacy.enums.OrderStatus.CONFIRMED) {
+            throw new RuntimeException("Заказ уже нельзя отменить");
+        }
+
+        // Возвращаем товары на склад!
+        for (var item : order.getItems()) {
+            var product = item.getProduct();
+            product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
+        }
+
+        order.setStatus(com.pharmacy.onlinepharmacy.enums.OrderStatus.CANCELLED);
+        orderRepository.save(order);
+    }
+
+    // Метод для смены статуса заказа
+    @Transactional
+    public void updateOrderStatus(Long orderId, OrderStatus newStatus) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Заказ не найден"));
+
+        if (!isValidTransition(order.getStatus(), newStatus)) {
+            throw new RuntimeException("Недопустимый переход статуса: " + order.getStatus() + " -> " + newStatus);
+        }
+
+        order.setStatus(newStatus);
+        orderRepository.save(order);
+    }
+
+    // Проверка цепочки статусов
+    private boolean isValidTransition(OrderStatus current, OrderStatus next) {
+        return switch (current) {
+            case CREATED -> next == OrderStatus.CONFIRMED || next == OrderStatus.CANCELLED;
+            case CONFIRMED -> next == OrderStatus.ASSEMBLING || next == OrderStatus.CANCELLED;
+            case ASSEMBLING -> next == OrderStatus.SHIPPED;
+            case SHIPPED -> next == OrderStatus.COMPLETED;
+            default -> false;
+        };
     }
 }

@@ -47,4 +47,9 @@ public class ProductService {
                 .stockQuantity(product.getStockQuantity())
                 .build();
     }
+    public ProductResponse getProductById(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Товар не найден"));
+        return mapToResponse(product);
+    }
 }

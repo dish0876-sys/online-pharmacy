@@ -3,6 +3,7 @@ package com.pharmacy.onlinepharmacy.config;
 import com.pharmacy.onlinepharmacy.service.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -31,9 +32,19 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
+                        // 1. Консоль БД (для вас, чтобы смотреть данные)
                         .requestMatchers("/h2-console/**").permitAll()
+
+                        // 2. Регистрация и вход (доступны без пароля)
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/products/**").permitAll()
+
+                        // 3. Просмотр каталога (GET запросы) доступен всем
+                        .requestMatchers(HttpMethod.GET, "/products/**").permitAll()
+
+                        // 4. Панель фармацевта — ТОЛЬКО для роли PHARMACIST
+                        .requestMatchers("/pharmacist/**").hasAuthority("ROLE_PHARMACIST")
+
+                        // 5. Всё остальное (корзина, заказы, профиль) — только для авторизованных
                         .anyRequest().authenticated()
                 )
                 .headers(headers -> headers

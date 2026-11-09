@@ -19,4 +19,10 @@ public class OrderController {
         Long orderId = orderService.createOrder(auth.getName(), request);
         return ResponseEntity.ok(orderId);
     }
+
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<String> cancelOrder(@PathVariable Long id, Authentication auth) {
+        orderService.cancelOrder(id, auth.getName());
+        return ResponseEntity.ok("Заказ отменен");
+    }
 }
