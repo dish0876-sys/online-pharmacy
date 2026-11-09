@@ -11,3 +11,6 @@ spring:
   h2:
     console:
       enabled: true # Включает веб-консоль для просмотра БД
+app:
+  upload:
+    dir: uploads/prescriptions/

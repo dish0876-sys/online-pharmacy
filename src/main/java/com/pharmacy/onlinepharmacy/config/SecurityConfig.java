@@ -22,7 +22,6 @@ public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
 
-    // --- КОНСТРУКТОР ВРУЧНУЮ (вместо @RequiredArgsConstructor) ---
     public SecurityConfig(CustomUserDetailsService userDetailsService) {
         this.userDetailsService = userDetailsService;
     }
@@ -37,10 +36,13 @@ public class SecurityConfig {
 
                         // 2. Регистрация и вход (доступны без пароля)
                         .requestMatchers("/auth/**").permitAll()
+                        // Запрещаем прямой доступ к файлам по URL
+                        .requestMatchers("/uploads/**").denyAll()
 
                         // 3. Просмотр каталога (GET запросы) доступен всем
                         .requestMatchers(HttpMethod.GET, "/products/**").permitAll()
-
+                        //Для админа
+                        .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN")
                         // 4. Панель фармацевта — ТОЛЬКО для роли PHARMACIST
                         .requestMatchers("/pharmacist/**").hasAuthority("ROLE_PHARMACIST")
 

@@ -2,10 +2,12 @@ package com.pharmacy.onlinepharmacy.service;
 
 import com.pharmacy.onlinepharmacy.dto.CreateProductRequest;
 import com.pharmacy.onlinepharmacy.dto.ProductResponse;
+import com.pharmacy.onlinepharmacy.dto.UpdateProductRequest;
 import com.pharmacy.onlinepharmacy.entity.Product;
 import com.pharmacy.onlinepharmacy.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional; // Для аннотации @Transactional
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -51,5 +53,43 @@ public class ProductService {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Товар не найден"));
         return mapToResponse(product);
+    }
+
+
+    @Transactional
+    public ProductResponse updateProduct(Long id, UpdateProductRequest request) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Товар не найден"));
+
+        product.setName(request.getName());
+        product.setDescription(request.getDescription());
+        product.setPrice(request.getPrice());
+        product.setPrescriptionRequired(request.isPrescriptionRequired());
+
+        Product updated = productRepository.save(product);
+        return mapToResponse(updated);
+    }
+
+    @Transactional
+    public void deleteProduct(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Товар не найден"));
+
+        // Soft delete: не удаляем из БД, а ставим флаг
+        product.setDeleted(true);
+        productRepository.save(product);
+    }
+
+    @Transactional
+    public void updateStock(Long id, Integer newQuantity) {
+        if (newQuantity < 0) {
+            throw new RuntimeException("Остаток не может быть отрицательным");
+        }
+
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Товар не найден"));
+
+        product.setStockQuantity(newQuantity);
+        productRepository.save(product);
     }
 }
