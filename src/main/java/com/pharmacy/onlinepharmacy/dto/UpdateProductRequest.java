@@ -9,5 +9,5 @@ public class UpdateProductRequest {
     private String description;
     private BigDecimal price;
     private boolean prescriptionRequired;
-    // Остаток (stockQuantity) мы вынесем в отдельный эндпоинт, как в ТЗ
+    // Остаток (stockQuantity) вынесем в отдельный эндпоинт
 }

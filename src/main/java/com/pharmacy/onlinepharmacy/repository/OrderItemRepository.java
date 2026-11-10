@@ -12,5 +12,5 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
             "WHERE o.status != 'CANCELLED' " +
             "GROUP BY oi.product.id, oi.product.name " +
             "ORDER BY totalSold DESC")
-    List<Object[]> findTopProducts(); // Возвращает список массивов [имя_товара, количество]
+    List<Object[]> findTopProducts(); // Возвращает список массивов
 }

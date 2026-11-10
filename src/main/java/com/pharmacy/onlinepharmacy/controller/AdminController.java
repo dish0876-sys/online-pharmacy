@@ -26,8 +26,6 @@ public class AdminController {
     private final ReportService reportService;             // Добавили сервис отчетов
     private final ProductRepository productRepository;     // Добавили репозиторий товаров (для отчета по остаткам)
 
-    // ==================== УПРАВЛЕНИЕ ТОВАРАМИ (ЭТАП 8) ====================
-
     @PostMapping("/products")
     public ResponseEntity<ProductResponse> createProduct(@RequestBody CreateProductRequest request) {
         return ResponseEntity.ok(productService.createProduct(request));
@@ -49,8 +47,6 @@ public class AdminController {
         productService.updateStock(productId, quantity);
         return ResponseEntity.ok("Остаток на складе обновлен");
     }
-
-    // ==================== ОТЧЕТЫ И АНАЛИТИКА (ЭТАП 9) ====================
 
     // 1. Отчет по продажам (выручка и количество заказов за период)
     // Пример запроса: GET /admin/reports/sales?from=2023-01-01T00:00:00&to=2023-12-31T23:59:59

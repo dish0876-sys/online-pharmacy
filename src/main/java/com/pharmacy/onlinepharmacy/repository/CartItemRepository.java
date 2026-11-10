@@ -15,6 +15,6 @@ public interface CartItemRepository extends JpaRepository<CartItem, Long> {
     // Найти конкретную позицию в корзине (по пользователю и товару)
     Optional<CartItem> findByUserAndProduct(User user, Product product);
 
-    // Удалить всё из корзины пользователя (нужно для очистки после заказа)
+    // Удалить всё из корзины пользователя
     void deleteAllByUser(User user);
 }

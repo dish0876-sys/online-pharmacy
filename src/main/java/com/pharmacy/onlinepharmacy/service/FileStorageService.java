@@ -10,7 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
 
-@Service // Говорим Spring, что это сервис (он будет доступен для внедрения в другие классы)
+@Service
 public class FileStorageService {
 
     // Берем путь из файла application.properties/yaml
@@ -43,7 +43,7 @@ public class FileStorageService {
             return uploadDir + fileName;
 
         } catch (IOException e) {
-            // Если произошла ошибка (например, нет прав на запись), выбрасываем исключение
+            // Если произошла ошибка, выбрасываем исключение
             throw new RuntimeException("Ошибка при сохранении файла: " + e.getMessage(), e);
         }
     }

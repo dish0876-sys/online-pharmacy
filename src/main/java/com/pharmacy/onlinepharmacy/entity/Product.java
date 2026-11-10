@@ -25,7 +25,7 @@ public class Product {
     private String description;
 
     @Column(nullable = false)
-    private BigDecimal price; // Для денег используем BigDecimal, а не Double
+    private BigDecimal price;
 
     @Column(name = "prescription_required", nullable = false)
     private boolean prescriptionRequired = false;

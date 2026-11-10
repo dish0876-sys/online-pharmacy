@@ -27,7 +27,7 @@ public class ReportService {
     public List<TopProductResponse> getTopProducts(int limit) {
         List<Object[]> results = orderItemRepository.findTopProducts();
 
-        // Превращаем результат из БД в наш красивый DTO и ограничиваем количество (limit)
+        // Превращаем результат из БД в DTO и ограничиваем количество (limit)
         return results.stream()
                 .limit(limit)
                 .map(row -> new TopProductResponse((String) row[0], ((Number) row[1]).longValue()))
