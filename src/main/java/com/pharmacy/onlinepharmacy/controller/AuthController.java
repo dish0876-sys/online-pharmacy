@@ -15,6 +15,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.*;
 
+
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -54,5 +55,13 @@ public class AuthController {
                 authentication.getName(),
                 authentication.getAuthorities().iterator().next().getAuthority()
         ));
+    }
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(HttpServletRequest request) {
+        // Очищаем контекст безопасности
+        SecurityContextHolder.clearContext();
+        // Инвалидируем (уничтожаем) сессию
+        request.getSession().invalidate();
+        return ResponseEntity.ok("Вы успешно вышли из системы");
     }
 }

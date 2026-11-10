@@ -3,11 +3,11 @@ package com.pharmacy.onlinepharmacy.service;
 import com.pharmacy.onlinepharmacy.dto.CreateOrderRequest;
 import com.pharmacy.onlinepharmacy.entity.*;
 import com.pharmacy.onlinepharmacy.enums.OrderStatus;
+import com.pharmacy.onlinepharmacy.enums.PrescriptionStatus;
 import com.pharmacy.onlinepharmacy.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -22,16 +22,44 @@ public class OrderService {
     private final CartItemRepository cartItemRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final PrescriptionRepository prescriptionRepository;
 
     @Transactional
     public Long createOrder(String email, CreateOrderRequest request) {
-        User user = userRepository.findByEmail(email).orElseThrow();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+
         List<CartItem> cartItems = cartItemRepository.findAllByUser(user);
 
         if (cartItems.isEmpty()) {
             throw new RuntimeException("Корзина пуста");
         }
 
+        // Проверка рецепта
+        boolean hasPrescriptionItems = cartItems.stream()
+                .anyMatch(item -> item.getProduct().isPrescriptionRequired());
+
+        if (hasPrescriptionItems) {
+            if (request.getPrescriptionId() == null) {
+                throw new RuntimeException("В корзине есть рецептурные товары. Необходимо передать ID рецепта.");
+            }
+
+            Prescription prescription = prescriptionRepository.findById(request.getPrescriptionId())
+                    .orElseThrow(() -> new RuntimeException("Рецепт с таким ID не найден"));
+
+            if (!prescription.getUser().getId().equals(user.getId())) {
+                throw new RuntimeException("Этот рецепт принадлежит другому пользователю");
+            }
+
+            if (prescription.getStatus() != PrescriptionStatus.APPROVED) {
+                throw new RuntimeException("Рецепт не одобрен фармацевтом или уже был использован");
+            }
+
+            prescription.setStatus(PrescriptionStatus.USED);
+            prescriptionRepository.save(prescription);
+        }
+
+        // Создаем сам заказ
         Order order = Order.builder()
                 .user(user)
                 .status(OrderStatus.CREATED)
@@ -45,16 +73,13 @@ public class OrderService {
         for (CartItem cartItem : cartItems) {
             Product product = cartItem.getProduct();
 
-            // Проверяем остатки перед созданием заказа
             if (product.getStockQuantity() < cartItem.getQuantity()) {
-                throw new RuntimeException("Недостаточно товара: " + product.getName());
+                throw new RuntimeException("Недостаточно товара на складе: " + product.getName());
             }
 
-            // Списываем остаток
             product.setStockQuantity(product.getStockQuantity() - cartItem.getQuantity());
             productRepository.save(product);
 
-            // Создаем позицию заказа
             OrderItem orderItem = OrderItem.builder()
                     .order(order)
                     .product(product)
@@ -69,40 +94,11 @@ public class OrderService {
         order.setTotalPrice(totalPrice);
         orderRepository.save(order);
 
-        // Очищаем корзину
         cartItemRepository.deleteAllByUser(user);
 
         return order.getId();
     }
 
-    // Метод смены статуса
-    @Transactional
-    public void cancelOrder(Long orderId, String userEmail) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Заказ не найден"));
-
-        // Проверяем, что заказ принадлежит этому пользователю
-        if (!order.getUser().getEmail().equals(userEmail)) {
-            throw new RuntimeException("У вас нет прав на отмену этого заказа");
-        }
-
-        // Отменить можно только в CREATED или CONFIRMED
-        if (order.getStatus() != com.pharmacy.onlinepharmacy.enums.OrderStatus.CREATED &&
-                order.getStatus() != com.pharmacy.onlinepharmacy.enums.OrderStatus.CONFIRMED) {
-            throw new RuntimeException("Заказ уже нельзя отменить");
-        }
-
-        // Возвращаем товары на склад!
-        for (var item : order.getItems()) {
-            var product = item.getProduct();
-            product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
-        }
-
-        order.setStatus(com.pharmacy.onlinepharmacy.enums.OrderStatus.CANCELLED);
-        orderRepository.save(order);
-    }
-
-    // Метод для смены статуса заказа
     @Transactional
     public void updateOrderStatus(Long orderId, OrderStatus newStatus) {
         Order order = orderRepository.findById(orderId)
@@ -116,7 +112,6 @@ public class OrderService {
         orderRepository.save(order);
     }
 
-    // Проверка цепочки статусов
     private boolean isValidTransition(OrderStatus current, OrderStatus next) {
         return switch (current) {
             case CREATED -> next == OrderStatus.CONFIRMED || next == OrderStatus.CANCELLED;
@@ -125,5 +120,28 @@ public class OrderService {
             case SHIPPED -> next == OrderStatus.COMPLETED;
             default -> false;
         };
+    }
+
+    @Transactional
+    public void cancelOrder(Long orderId, String userEmail) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Заказ не найден"));
+
+        if (!order.getUser().getEmail().equals(userEmail)) {
+            throw new RuntimeException("У вас нет прав на отмену этого заказа");
+        }
+
+        if (order.getStatus() != OrderStatus.CREATED && order.getStatus() != OrderStatus.CONFIRMED) {
+            throw new RuntimeException("Заказ уже нельзя отменить");
+        }
+
+        for (var item : order.getItems()) {
+            var product = item.getProduct();
+            product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
+            productRepository.save(product);
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+        orderRepository.save(order);
     }
 }
